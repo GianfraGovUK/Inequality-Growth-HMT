@@ -1,0 +1,64 @@
+---
+title: "Hackathon"
+author: "Mateus Berutto Figueiredo"
+date: "2025-02-06"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Loading Packages
+
+```{r loading_packages}
+# install.packages("openxlsx")
+# install.packages("WDI")
+# library(dplyr)
+
+library(openxlsx) 
+library(WDI)
+library(dplyr)
+```
+
+## Loading and Cleaning Data
+
+```{r loading_cleaning_data}
+
+# Reading data
+growth_data <- read.xlsx("pre-processed_inequality_data.xlsx")
+
+# Cleaning and transforming data
+growth_data <- growth_data %>%
+  # Creating gdp_pc_growth variable
+  mutate(gdp_pc_growth = (GDP.per.capita..constant.prices. - lag(GDP.per.capitaconstant.prices.)) / 
+                              lag(GDP.per.capita..constant.prices.) * 100) %>%
+  # Changing variable class
+  mutate(Year = as.character(Year))
+
+
+
+# Getting data from WB API for world GDP growth
+global_gdp_growth <- WDI(indicator = "NY.GDP.MKTP.KD.ZG", country = "WLD", start = 1961, end = 2019)
+
+# Cleaning and transforming data
+global_gdp_growth <- global_gdp_growth %>%
+  # Renaming column to simplify merging later
+  rename(Year = year) %>%
+  rename(wrl_gdp_growth = NY.GDP.MKTP.KD.ZG)
+  # Changing variable class
+  mutate(Year = as.character(Year))
+  
+# Adding world GDP growth variable to main tibble
+growth_data <- growth_data %>%
+  left_join(global_gdp_growth, by = "Year")
+
+# Deleting unecesary column
+> growth_data <- growth_data %>%
+  select(-iso2c) %>%
+  select(-iso3c) %>%
+  select(-country)
+
+# Saving data as CSV
+write_csv(growth_data, "growth_data.csv")
+```
